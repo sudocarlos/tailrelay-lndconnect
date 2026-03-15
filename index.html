@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TailRelay LNDConnect</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --border:    #2e3245;
+      --accent:    #7c6af7;
+      --accent-hov:#9d8fff;
+      --text:      #e2e4ef;
+      --muted:     #6b7094;
+      --error:     #f27272;
+      --success:   #72f2a8;
+      --radius:    8px;
+      --font:      'SF Mono', 'Fira Code', 'Consolas', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem 4rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    header p {
+      margin-top: 0.4rem;
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      width: 100%;
+      max-width: 640px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .field:last-of-type { margin-bottom: 0; }
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    textarea, input[type="text"] {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.82rem;
+      line-height: 1.5;
+      padding: 0.65rem 0.85rem;
+      resize: vertical;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+
+    textarea:focus, input[type="text"]:focus {
+      border-color: var(--accent);
+      outline: none;
+    }
+
+    textarea { min-height: 6.5rem; }
+
+    .error-msg {
+      font-size: 0.8rem;
+      color: var(--error);
+      margin-top: 0.25rem;
+      display: none;
+    }
+
+    .error-msg.visible { display: block; }
+
+    .actions {
+      margin-top: 1.5rem;
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    button {
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius);
+      padding: 0.6rem 1.25rem;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    #btn-generate {
+      background: var(--accent);
+      color: #fff;
+      flex: 1;
+    }
+
+    #btn-generate:hover { background: var(--accent-hov); }
+
+    #btn-clear {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    #btn-clear:hover { border-color: var(--text); color: var(--text); }
+
+    /* Output */
+    #output {
+      display: none;
+      width: 100%;
+      max-width: 640px;
+      margin-top: 1.5rem;
+    }
+
+    #output.visible { display: block; }
+
+    .output-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .url-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+
+    #result-url {
+      font-family: var(--font);
+      font-size: 0.78rem;
+      word-break: break-all;
+      color: var(--success);
+      display: block;
+      padding-right: 4rem;
+    }
+
+    #btn-copy {
+      position: absolute;
+      top: 0.65rem;
+      right: 0.65rem;
+      background: var(--border);
+      color: var(--text);
+      font-size: 0.72rem;
+      padding: 0.3rem 0.65rem;
+      border-radius: 4px;
+    }
+
+    #btn-copy:hover { background: var(--accent); color: #fff; }
+    #btn-copy.copied { background: var(--success); color: #0f1117; }
+
+    .qr-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    #qr-canvas {
+      border-radius: 4px;
+      display: block;
+    }
+
+    .qr-hint {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    footer {
+      margin-top: 3rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    footer a { color: var(--muted); text-decoration: underline; }
+    footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>TailRelay LNDConnect</h1>
+  <p>Replace an onion/local LND address with your Tailscale relay host</p>
+</header>
+
+<div class="card">
+  <div class="field">
+    <label for="lnd-url">LND Connect REST URL</label>
+    <textarea
+      id="lnd-url"
+      spellcheck="false"
+      autocomplete="off"
+      placeholder="lndconnect://abc123.onion:8080?macaroon=…"
+    ></textarea>
+    <span class="error-msg" id="err-url"></span>
+  </div>
+
+  <div class="field">
+    <label for="tailnet-host">Tailnet host:port</label>
+    <input
+      type="text"
+      id="tailnet-host"
+      spellcheck="false"
+      autocomplete="off"
+      placeholder="tailrelay.mytailnet.ts.net:21000"
+    />
+    <span class="error-msg" id="err-host"></span>
+  </div>
+
+  <div class="actions">
+    <button id="btn-generate">Generate QR</button>
+    <button id="btn-clear">Clear</button>
+  </div>
+</div>
+
+<div id="output">
+  <div class="url-block">
+    <p class="output-label">Transformed URL</p>
+    <code id="result-url"></code>
+    <button id="btn-copy">Copy</button>
+  </div>
+
+  <div class="qr-block">
+    <p class="output-label" style="align-self:flex-start">QR Code</p>
+    <canvas id="qr-canvas"></canvas>
+    <p class="qr-hint">Scan with Zeus, Breez, or any lndconnect-compatible wallet</p>
+  </div>
+</div>
+
+<footer>
+  <a href="https://github.com/tailrelay" target="_blank" rel="noopener">TailRelay</a>
+  &nbsp;&middot;&nbsp;
+  All processing happens in your browser — nothing is sent to a server.
+</footer>
+
+<script>
+  const elUrl    = document.getElementById('lnd-url');
+  const elHost   = document.getElementById('tailnet-host');
+  const elOutput = document.getElementById('output');
+  const elResult = document.getElementById('result-url');
+  const elCanvas = document.getElementById('qr-canvas');
+  const btnGen   = document.getElementById('btn-generate');
+  const btnClear = document.getElementById('btn-clear');
+  const btnCopy  = document.getElementById('btn-copy');
+  const errUrl   = document.getElementById('err-url');
+  const errHost  = document.getElementById('err-host');
+
+  function showError(el, msg) {
+    el.textContent = msg;
+    el.classList.add('visible');
+  }
+
+  function clearError(el) {
+    el.textContent = '';
+    el.classList.remove('visible');
+  }
+
+  function transformUrl(lndConnectUrl, tailnetHostPort) {
+    // lndconnect:// isn't a recognised scheme for URL(), swap to https:// for parsing
+    const normalized = lndConnectUrl.trim().replace(/^lndconnect:\/\//i, 'https://');
+    const parsed = new URL(normalized);
+
+    const [tailnetHost, tailnetPort] = splitHostPort(tailnetHostPort.trim());
+
+    // Reconstruct — preserve the original search string verbatim
+    const result = `lndconnect://${tailnetHost}:${tailnetPort}${parsed.search}`;
+    return result;
+  }
+
+  // Split "host:port" handling IPv6 brackets: [::1]:8080
+  function splitHostPort(hostPort) {
+    const lastColon = hostPort.lastIndexOf(':');
+    if (lastColon === -1) {
+      throw new Error('No port found — expected format host:port');
+    }
+    const host = hostPort.slice(0, lastColon);
+    const port = hostPort.slice(lastColon + 1);
+    if (!port || isNaN(Number(port))) {
+      throw new Error(`Invalid port: "${port}"`);
+    }
+    return [host, port];
+  }
+
+  function validate() {
+    let ok = true;
+    clearError(errUrl);
+    clearError(errHost);
+
+    const raw = elUrl.value.trim();
+    const hostPort = elHost.value.trim();
+
+    if (!raw) {
+      showError(errUrl, 'LND Connect URL is required.');
+      ok = false;
+    } else if (!/^lndconnect:\/\//i.test(raw)) {
+      showError(errUrl, 'URL must start with lndconnect://');
+      ok = false;
+    } else {
+      try {
+        new URL(raw.replace(/^lndconnect:\/\//i, 'https://'));
+      } catch {
+        showError(errUrl, 'Could not parse URL — check for typos.');
+        ok = false;
+      }
+    }
+
+    if (!hostPort) {
+      showError(errHost, 'Tailnet host:port is required.');
+      ok = false;
+    } else {
+      try {
+        splitHostPort(hostPort);
+      } catch (e) {
+        showError(errHost, e.message);
+        ok = false;
+      }
+    }
+
+    return ok;
+  }
+
+  btnGen.addEventListener('click', () => {
+    if (!validate()) return;
+
+    let transformed;
+    try {
+      transformed = transformUrl(elUrl.value, elHost.value);
+    } catch (e) {
+      showError(errUrl, `Transform failed: ${e.message}`);
+      return;
+    }
+
+    elResult.textContent = transformed;
+
+    QRCode.toCanvas(elCanvas, transformed, {
+      width: 320,
+      margin: 2,
+      color: {
+        dark: '#0f1117',
+        light: '#e2e4ef',
+      },
+      errorCorrectionLevel: 'L',  // lower EC = more data capacity for long URLs
+    }, (err) => {
+      if (err) {
+        showError(errUrl, `QR render error: ${err.message}`);
+        return;
+      }
+      elOutput.classList.add('visible');
+      elOutput.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  btnClear.addEventListener('click', () => {
+    elUrl.value = '';
+    elHost.value = '';
+    clearError(errUrl);
+    clearError(errHost);
+    elOutput.classList.remove('visible');
+    elResult.textContent = '';
+    btnCopy.textContent = 'Copy';
+    btnCopy.classList.remove('copied');
+    const ctx = elCanvas.getContext('2d');
+    ctx.clearRect(0, 0, elCanvas.width, elCanvas.height);
+  });
+
+  btnCopy.addEventListener('click', () => {
+    const text = elResult.textContent;
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      btnCopy.textContent = 'Copied!';
+      btnCopy.classList.add('copied');
+      setTimeout(() => {
+        btnCopy.textContent = 'Copy';
+        btnCopy.classList.remove('copied');
+      }, 2000);
+    }).catch(() => {
+      // Fallback for non-secure contexts
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btnCopy.textContent = 'Copied!';
+      btnCopy.classList.add('copied');
+      setTimeout(() => {
+        btnCopy.textContent = 'Copy';
+        btnCopy.classList.remove('copied');
+      }, 2000);
+    });
+  });
+
+  // Allow Enter in the host field to trigger generation
+  elHost.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') btnGen.click();
+  });
+</script>
+
+</body>
+</html>
